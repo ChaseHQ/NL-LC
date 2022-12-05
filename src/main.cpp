@@ -1,13 +1,82 @@
 #include <Arduino.h>
 #include <Preferences.h>
+#include <map>
 
 #include "BTManager.h"
 #include <ZoneDataFactory.h>
+#include <NeoPixelBus.h>
 
 #define PKEY_ZONEDATA "ZDKey"
 
 BTManager * btm = nullptr;
 Preferences preferences;
+auto _zoneMap = std::map<uint8_t,NeoPixelBus<NeoGrbFeature, NeoEsp32RmtNWs2812xMethod> *>();
+
+class PIN_MAP {
+  public:
+  static uint8_t GetPinForZone(uint8_t zoneID) {
+    switch (zoneID) {
+      case 0:
+        return 15;
+      break;
+      case 1:
+        return 2;
+      break;
+      case 2:
+        return 0;
+      break;
+      case 3:
+        return 4;
+      break;
+      case 4:
+        return 16;
+      break;
+      case 5:
+        return 17;
+      break;
+      case 6:
+        return 22;
+      break;
+      case 7:
+      default:
+        return 23;
+      break;
+    }
+  }
+};
+
+NeoPixelBus<NeoGrbFeature, NeoEsp32RmtNWs2812xMethod> * getSetupZone(ZoneDataProperties * props) {
+  if (_zoneMap[props->getZoneID()] == nullptr) {
+    _zoneMap[props->getZoneID()] = new NeoPixelBus<NeoGrbFeature, NeoEsp32RmtNWs2812xMethod>(props->ledCount,PIN_MAP::GetPinForZone(props->getZoneID()),NeoBusChannel(props->getZoneID()));
+    _zoneMap[props->getZoneID()]->Begin();
+    return _zoneMap[props->getZoneID()];
+  } else {
+    if (_zoneMap[props->getZoneID()]->PixelCount() != props->ledCount) {
+      // Reset the zone
+      _zoneMap[props->getZoneID()]->ClearTo(RgbColor(0));
+      _zoneMap[props->getZoneID()]->Show();
+      delete _zoneMap[props->getZoneID()];
+      _zoneMap[props->getZoneID()] = nullptr;
+      return getSetupZone(props);
+    }
+  }
+  return _zoneMap[props->getZoneID()];
+}
+
+void updateLights() {
+  //Serial.println("UpdateLights :: Updating Lights");
+  NeoGamma<NeoGammaEquationMethod> color;
+  for (auto zp : ZoneDataFactory::Instance()->getZoneData()->getZonePropertyList()){
+    auto zone = getSetupZone(&zp);
+    float brightness = 255 / ((zp.Brightness == 0) ? 1 : zp.Brightness);
+    zone->ClearTo(color.Correct(RgbColor(
+          zp.isOn ? (float)(zp.RGB.R/brightness) : 0, 
+          zp.isOn ? (float)(zp.RGB.G/brightness) : 0, 
+          zp.isOn ? (float)(zp.RGB.B/brightness) : 0)
+        ));
+    zone->Show();
+  }
+}
 
 void setDefaultZones() {
   ZoneDataProperties zdp;
@@ -31,8 +100,9 @@ void publishZoneData() {
   buffer = (uint8_t *) malloc(bufferSize);
   ZoneDataFactory::Instance()->serialize(buffer);
   btm->setWRData(buffer,bufferSize);
-  Serial.printf("PUBLISH :: Set ZoneData on BT Characteristic : Size: %zu\n", bufferSize);
+  //Serial.printf("PUBLISH :: Set ZoneData on BT Characteristic : Size: %zu\n", bufferSize);
   free(buffer);
+  updateLights();
 }
 
 class CBHandle : public BTManagerCallback {
@@ -44,12 +114,12 @@ class CBHandle : public BTManagerCallback {
       Serial.println("CALLBACK :: Disconnected");
     }
     void readEvent() {
-      Serial.println("CALLBACK :: Read Event Occured");
+      //Serial.println("CALLBACK :: Read Event Occured");
     }
     void writeEvent(uint8_t * data, size_t size) {
-      Serial.printf("CALLBACK :: Write Event with Data Occured :: Bytes Recieved: %zu\n",size);
+      //Serial.printf("CALLBACK :: Write Event with Data Occured :: Bytes Recieved: %zu\n",size);
       if (ZoneDataFactory::Instance()->deserialize(data)) {
-        Serial.println("ZoneDataFactory :: Successfully De-Serialized Write Event");
+        //Serial.println("ZoneDataFactory :: Successfully De-Serialized Write Event");
         publishZoneData();
       } else {
         Serial.println("ZoneDataFactory :: ERROR :: Could not deserialize the write event");
@@ -77,9 +147,15 @@ void setup() {
     buffer = (uint8_t *) malloc(bufferSize);
     preferences.getBytes(PKEY_ZONEDATA, buffer, bufferSize);
     Serial.printf("EEPROM :: Restoring state of ZoneData : Size: %zu\n",bufferSize);
-    ZoneDataFactory::Instance()->deserialize(buffer);
+    if (!ZoneDataFactory::Instance()->deserialize(buffer)) {
+      Serial.printf("EEPROM :: Failure Restoring State of Zone Data - Defaulting");
+      setDefaultZones();
+      saveZoneData();
+    }
     free(buffer);
   }
+
+  updateLights();
 
   uint8_t * buffer;
   buffer = (uint8_t *) malloc(ZoneDataFactory::Instance()->serializationBufferSize());
@@ -89,5 +165,6 @@ void setup() {
 }
 
 void loop() {
-  delay(2000);
+  sleep(1);
 }
+

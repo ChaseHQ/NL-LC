@@ -7,11 +7,11 @@
 
 class MyCallbacks : public BLEServerCallbacks {
     void onConnect(BLEServer * pServer) {
-        Serial.println("Someone Connected");
+        Serial.println("BTManager :: Someone Connected");
     }
 
     void onDisconnect(BLEServer * pServer) {
-        Serial.println("Someone Disconnected");
+        Serial.println("BTManager :: Someone Disconnected");
     }
 };
 
@@ -63,12 +63,12 @@ void BTManager::onDisconnect(BLEServer *pServer) {
 }
 
 void BTManager::onRead(BLECharacteristic* pCharacteristic) {
-    Serial.println("BTManager :: Read Event");
+    //Serial.println("BTManager :: Read Event");
     _delegate->readEvent();
 }
 
 void BTManager::onWrite(BLECharacteristic* pCharacteristic) {
-    Serial.println("BTManager :: Write Event");
+    //Serial.println("BTManager :: Write Event");
     if (pCharacteristic->getUUID().equals(BLEUUID(WRDATA_UUID))) {
         _delegate->writeEvent(pCharacteristic->getData(), pCharacteristic->getLength());
     } else if (pCharacteristic->getUUID().equals(BLEUUID(SAVEMEM_UUID))) {

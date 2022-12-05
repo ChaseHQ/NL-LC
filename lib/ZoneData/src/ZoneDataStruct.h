@@ -4,10 +4,10 @@
 #ifndef __ZONEDATASTRUCT__
 #define __ZONEDATASTRUCT__
 
-#define ZONEDATA_EEPROM_SIZE 400
-#define ZONEDATA_STRUCT_VERSION 0x01
+#define ZONEDATA_EEPROM_SIZE    400
+#define ZONEDATA_STRUCT_VERSION 0x02
 #define ZONEDATA_ZONENAME_SIZE  11
-#define ZONEDATA_MAX_ZONES ( (ZONEDATA_EEPROM_SIZE - sizeof(ZoneDataSerialHeader)) / sizeof(ZoneDataProperties) )
+#define ZONEDATA_MAX_ZONES      8
 
 struct ZoneColor {
     unsigned char R = 0;
@@ -28,7 +28,6 @@ public:
     ZoneColor RGB;
     unsigned char Brightness = 0;
     unsigned char isOn = 0;
-    unsigned char pin = 0;
     unsigned char ledCount = 0;
 };
 

@@ -56,7 +56,6 @@ void ZoneDataFactory::serialize(uint8_t * buffer) {
         buffer[buffPtr++] = zone.RGB.R;
         buffer[buffPtr++] = zone.RGB.G;
         buffer[buffPtr++] = zone.RGB.B;
-        buffer[buffPtr++] = zone.pin;
         buffer[buffPtr++] = zone.ledCount;
     }
 }
@@ -83,7 +82,6 @@ bool ZoneDataFactory::deserialize(uint8_t * buffer) {
         zone.RGB.R = buffer[buffPtr++];
         zone.RGB.G = buffer[buffPtr++];
         zone.RGB.B = buffer[buffPtr++];
-        zone.pin = buffer[buffPtr++];
         zone.ledCount = buffer[buffPtr++];
 
         if (!ZoneDataFactory::Instance()->getZoneData()->addZone(zone,reqZoneId)) {
