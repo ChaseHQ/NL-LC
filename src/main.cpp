@@ -68,12 +68,12 @@ void updateLights() {
   NeoGamma<NeoGammaEquationMethod> color;
   for (auto zp : ZoneDataFactory::Instance()->getZoneData()->getZonePropertyList()){
     auto zone = getSetupZone(&zp);
-    float brightness = 255 / ((zp.Brightness == 0) ? 1 : zp.Brightness);
-    zone->ClearTo(color.Correct(RgbColor(
-          zp.isOn ? (float)(zp.RGB.R/brightness) : 0, 
-          zp.isOn ? (float)(zp.RGB.G/brightness) : 0, 
-          zp.isOn ? (float)(zp.RGB.B/brightness) : 0)
-        ));
+    auto newColor = color.Correct(RgbColor(zp.RGB.R,zp.RGB.G,zp.RGB.B)).Dim(zp.Brightness);
+    if (zp.isOn) {
+      zone->ClearTo(newColor);
+    } else {
+      zone->ClearTo(RgbColor(0,0,0));
+    }
     zone->Show();
   }
 }
